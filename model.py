@@ -3,6 +3,7 @@ import time
 import cv2
 import pandas as pd
 import torch
+from tqdm import tqdm
 from ultralytics import YOLO
 
 
@@ -44,17 +45,18 @@ class AttentionModel:
         self.pos_est_model = None
 
         self.detected_data = pd.DataFrame(
-            columns=['Frame_id', 'Time', 'Objects_class', 'Position'],
+            columns=['Frame_id', 'Time', 'Position'],
         )
         self.detected_values = []
-        self.pos_est_data = pd.DataFrame(
-            columns=['Frame_id', 'Time', 'Keypoints'],
-        )
         self.pos_est_values = []
 
         # video parameters
         self.video_type = 'avi'  # saved video type
         self.sec_per_frame = None
+
+        self.pos_est_data = pd.DataFrame(
+            columns=['Frame_id', 'Time', 'KeyPoints'],
+        )
 
 
     def load_models(self):
@@ -93,20 +95,18 @@ class AttentionModel:
 
         if detected_classes:
             detection_time = frame_id * self.sec_per_frame
-            self.detected_values.append([frame_id, detection_time, detected_classes, detected_positions])
+            self.detected_values.append([frame_id, detection_time, detected_positions])
         return frame
 
 
     def handle_pos_est(self, results, frame, frame_id, save=False):
-        for result in results:
-            keypoints = result.keypoints.xy.cpu().numpy()[0]
-
+        keypoints = results[0].keypoints.xy.cpu().numpy().tolist()
+        for pose in keypoints:
             if save:
-                for point in keypoints:
+                for point in pose:
                     frame = cv2.circle(frame, (int(point[0]), int(point[1])), radius=0, color=(0, 255, 0), thickness=10)
-
-            detection_time = frame_id * self.sec_per_frame
-            self.pos_est_values.append([frame_id, detection_time, keypoints])
+        detection_time = frame_id * self.sec_per_frame
+        self.pos_est_values.append([frame_id, detection_time, len(results[0]), keypoints])
         return frame
 
 
@@ -127,26 +127,26 @@ class AttentionModel:
         start = time.time()
 
         success, frame = cap.read()
-        frame_count = 0
+        frame_id = 0
+        with tqdm(total=frame_count) as pbar:
+            while success:
+                frame_id += 1
+                if detection:
+                    detection_results = self.detect_model(frame, verbose=False)
+                    frame = self.handle_detection(detection_results, frame, frame_id, save)
 
-        while success:
-            frame_count += 1
+                if pos_estimation:
+                    pos_est_results = self.pos_est_model(frame, verbose=False)
+                    frame = self.handle_pos_est(pos_est_results, frame, frame_id, save)
 
-            if detection:
-                detection_results = self.detect_model(frame, verbose=False)
-                frame = self.handle_detection(detection_results, frame, frame_count, save)
-
-            if pos_estimation:
-                pos_est_results = self.pos_est_model(frame, verbose=False)
-                frame = self.handle_pos_est(pos_est_results, frame, frame_count, save)
-
-            if save:
-                out.write(frame)
-            success, frame = cap.read()
+                if save:
+                    out.write(frame)
+                success, frame = cap.read()
+                pbar.update(1)
         end = time.time() - start
         print(f'Time: {end}')
-        self.pos_est_data = pd.DataFrame(self.pos_est_values, columns=['Frame_id', 'Time', 'Keypoints'])
-        self.detected_data = pd.DataFrame(self.detected_values, columns=['Frame_id', 'Time', 'Objects_class', 'Position'])
+        self.pos_est_data = pd.DataFrame(self.pos_est_values, columns=['Frame_id', 'Time', 'People_count', 'KeyPoints'])
+        self.detected_data = pd.DataFrame(self.detected_values, columns=['Frame_id', 'Time', 'Position'])
 
     def get_detected_data(self):
         return self.detected_data
