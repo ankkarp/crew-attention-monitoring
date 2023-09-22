@@ -116,6 +116,7 @@ class AttentionModel:
 
         self.sec_per_frame = 1 / fps
 
+        frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
         frame_width = int(cap.get(3))
         frame_height = int(cap.get(4))
@@ -136,7 +137,7 @@ class AttentionModel:
                 frame = self.handle_detection(detection_results, frame, frame_count, save)
 
             if pos_estimation:
-                pos_est_results = self.pos_est_model(frame)
+                pos_est_results = self.pos_est_model(frame, verbose=False)
                 frame = self.handle_pos_est(pos_est_results, frame, frame_count, save)
 
             if save:
