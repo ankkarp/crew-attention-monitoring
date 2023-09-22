@@ -32,9 +32,9 @@ def save_handled_frame(frame_id, saved_video_path, img_save_path):
 
 
 class AttentionModel:
-    def __init__(self):
+    def __init__(self, detection_model='yolov8x.pt'):
         self.models_keys = {
-            'detection': 'models/yolov8x.pt',
+            'detection': detection_model,
             'pos_estimation': 'models/yolov8x-pose.pt'
         }
 
@@ -54,8 +54,7 @@ class AttentionModel:
 
         # video parameters
         self.video_type = 'avi'  # saved video type
-        self.fps = 30
-        self.sec_per_frame = 1 / self.fps
+        self.sec_per_frame = None
 
 
     def load_models(self):
@@ -113,12 +112,16 @@ class AttentionModel:
 
     def process_video(self, data_path, out_path, detection=True, pos_estimation=False, save=False):
         cap = cv2.VideoCapture(data_path)
+        fps = cap.get(cv2.CAP_PROP_FPS)
+
+        self.sec_per_frame = 1 / fps
+
 
         frame_width = int(cap.get(3))
         frame_height = int(cap.get(4))
 
         codec = cv2.VideoWriter_fourcc('M','J','P','G')  # avi format
-        out = cv2.VideoWriter(out_path , codec, self.fps, (frame_width, frame_height))
+        out = cv2.VideoWriter(out_path, codec, fps * 2, (frame_width, frame_height))
 
         start = time.time()
 
@@ -141,8 +144,8 @@ class AttentionModel:
             success, frame = cap.read()
         end = time.time() - start
         print(f'Time: {end}')
-        self.pos_est_data = pd.DataFrame(self.pos_est_values)
-        self.detected_data = pd.DataFrame(self.detected_values)
+        self.pos_est_data = pd.DataFrame(self.pos_est_values, columns=['Frame_id', 'Time', 'Keypoints'])
+        self.detected_data = pd.DataFrame(self.detected_values, columns=['Frame_id', 'Time', 'Objects_class', 'Position'])
 
     def get_detected_data(self):
         return self.detected_data
