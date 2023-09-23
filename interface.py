@@ -15,16 +15,17 @@ args = parser.parse_args()
 
 
 inputs = [
-    gr.Video(type='filepath', label='Input Video'),
+    gr.Video(label='Input Video'),
     gr.Textbox(lines=1, placeholder="0:00", label='Введите время нарушения')
 ]
 
 outputs = [
-    gr.Gallery(label="Фиксация нарушения", columns=(1, 3)),
+    gr.Gallery(label="Фиксация нарушения"),
     gr.Dataframe(
         label="Результат обработки видео",
+        row_count=10,
         max_rows=10,
-        col=2,
+        col_count=2,
     ),
 ]
 
