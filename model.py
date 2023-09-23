@@ -105,7 +105,7 @@ class AttentionModel:
             frames = self.handle_detection(detection_results, frames, timestamps, frame_ids, save)
         return frames
 
-    def process_video(self, data_path, out_path, detection=True, pos_estimation=False, save=False):
+    def process_video(self, data_path, out_path, detection=True, pos_estimation=True, save=True):
         cap = cv2.VideoCapture(data_path)
         fps = cap.get(cv2.CAP_PROP_FPS)
 
