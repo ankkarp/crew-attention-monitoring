@@ -61,10 +61,9 @@ class AttentionModel:
 
 
     def handle_detection(self, results, frames, timestamps, frame_ids, save=False):
-        detected_classes = []
-        detected_positions = []
-
         for i in range(len(results)):
+            detected_classes = []
+            detected_positions = []
             boxes = results[i].boxes.cpu().numpy()
 
             for box in boxes:
@@ -79,7 +78,6 @@ class AttentionModel:
                 detected_positions.append(xyxy.tolist())
 
             if len(detected_classes) != 0:
-                detection_time = frame_ids[i] * self.sec_per_frame
                 self.detected_values.append([frame_ids[i], timestamps[i], detected_positions])
         return frames
 
@@ -135,13 +133,13 @@ class AttentionModel:
                     timestamps.append(cap.get(cv2.CAP_PROP_POS_MSEC))
                     frame_ids.append(int(cap.get(cv2.CAP_PROP_POS_FRAMES)))
                     frames.append(frame)
-                if not success:
-                    break
                 if len(frames) != 0:
                     frames = self.process_batch(frames, timestamps, frame_ids, save)
                     if save:
                         for frame in frames:
                             out.write(frame)
+                if not success:
+                    break
                 pbar.update(len(frames))
         end = time.time() - start
         print(f'Time: {end}')
