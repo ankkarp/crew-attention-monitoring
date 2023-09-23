@@ -33,49 +33,39 @@ def save_handled_frame(frame_id, saved_video_path, img_save_path):
 
 
 class AttentionModel:
-    def __init__(self, detection_model='yolov8x.pt'):
-        self.models_keys = {
-            'detection': detection_model,
-            'pos_estimation': 'models/yolov8x-pose.pt'
-        }
+    def __init__(self, batch_size=4):
+        self.detected_history = []
+        self.pos_est_values = []
+        self.detected_values = []
+        self.sec_per_frame = None
+        self.batch_size = batch_size
 
         # models
         self.detect_model = None,
         self.detect_model_classes = None
         self.pos_est_model = None
 
-        self.detected_data = pd.DataFrame(
-            columns=['Frame_id', 'Time', 'Position'],
-        )
-        self.detected_values = []
-        self.pos_est_values = []
-
         # video parameters
         self.video_type = 'avi'  # saved video type
-        self.sec_per_frame = None
-
-        self.pos_est_data = pd.DataFrame(
-            columns=['Frame_id', 'Time', 'KeyPoints'],
-        )
 
 
-    def load_models(self):
-        self.detect_model = YOLO(self.models_keys['detection'])
-        self.detect_model_classes = self.detect_model.names
 
-        self.pos_est_model = YOLO(self.models_keys['pos_estimation'])
-
-        if torch.cuda.is_available():
+    def load_models(self, detection_modelname=None, pose_estimator_name=None):
+        if detection_modelname is not None:
+            self.detect_model = YOLO(detection_modelname)
+            self.detect_model_classes = self.detect_model.names
             self.detect_model.to('cuda')
+        if pose_estimator_name:
+            self.pos_est_model = YOLO(pose_estimator_name)
             self.pos_est_model.to('cuda')
 
 
-    def handle_detection(self, results, frame, frame_id, save=False):
+    def handle_detection(self, results, frames, timestamps, frame_ids, save=False):
         detected_classes = []
         detected_positions = []
 
-        for result in results:
-            boxes = result.boxes.cpu().numpy()
+        for i in range(len(results)):
+            boxes = results[i].boxes.cpu().numpy()
 
             for box in boxes:
                 class_name = self.detect_model_classes[int(box.cls)]
@@ -85,33 +75,44 @@ class AttentionModel:
                 if save:
                     confidence = str(round(box.conf[0].item(), 2))
                     label = f'{class_name}: {confidence}'
-                    frame = plot_boxes(frame, xyxy, label)
+                    frames[i] = plot_boxes(frames[i], xyxy, label)
                 detected_positions.append(xyxy.tolist())
 
-        detected_classes = set(detected_classes)
-
-        if detected_classes:
-            detection_time = frame_id * self.sec_per_frame
-            self.detected_values.append([frame_id, detection_time, detected_positions])
-        return frame
+            if len(detected_classes) != 0:
+                detection_time = frame_ids[i] * self.sec_per_frame
+                self.detected_values.append([frame_ids[i], timestamps[i], detected_positions])
+        return frames
 
 
-    def handle_pos_est(self, results, frame, frame_id, save=False):
-        keypoints = results[0].keypoints.xy.cpu().numpy().tolist()
-        for pose in keypoints:
-            if save:
-                for point in pose:
-                    frame = cv2.circle(frame, (int(point[0]), int(point[1])), radius=0, color=(0, 255, 0), thickness=10)
-        detection_time = frame_id * self.sec_per_frame
-        self.pos_est_values.append([frame_id, detection_time, len(results[0]), keypoints])
-        return frame
+    def handle_pos_est(self, results, frames, timestamps, frame_ids, save=False):
+        for i in range(len(results)):
+            keypoints = results[i].keypoints.xy.cpu().numpy().tolist()
+            for pose in keypoints:
+                if save:
+                    for point in pose:
+                        frames[i] = cv2.circle(frames[i], (int(point[0]), int(point[1])), radius=0, color=(0, 255, 0), thickness=10)
+            self.pos_est_values.append([frame_ids[i], timestamps[i], len(results[i]), keypoints])
+        return frames
 
+    def process_batch(self, frames, timestamps, frame_ids, save):
+        if self.pos_est_model is not None:
+            pos_est_results = self.pos_est_model(frames, verbose=False)
+            frames = self.handle_pos_est(pos_est_results, frames, timestamps, frame_ids, save)
+        if self.detect_model is not None:
+            detection_results = self.detect_model(frames, verbose=False)
+            frames = self.handle_detection(detection_results, frames, timestamps, frame_ids, save)
+        return frames
 
     def process_video(self, data_path, out_path, detection=True, pos_estimation=False, save=False):
         cap = cv2.VideoCapture(data_path)
         fps = cap.get(cv2.CAP_PROP_FPS)
 
         self.sec_per_frame = 1 / fps
+        self.detected_values = []
+        self.pos_est_values = []
+        self.detected_history = []
+        self.use_detection = detection
+        self.use_pose_estimation = pos_estimation
 
         frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
@@ -122,24 +123,26 @@ class AttentionModel:
         out = cv2.VideoWriter(out_path, codec, fps * 2, (frame_width, frame_height))
 
         start = time.time()
-
-        success, frame = cap.read()
-        frame_id = 0
         with tqdm(total=frame_count) as pbar:
-            while success:
-                frame_id += 1
-                if detection:
-                    detection_results = self.detect_model(frame, verbose=False)
-                    frame = self.handle_detection(detection_results, frame, frame_id, save)
-
-                if pos_estimation:
-                    pos_est_results = self.pos_est_model(frame, verbose=False)
-                    frame = self.handle_pos_est(pos_est_results, frame, frame_id, save)
-
-                if save:
-                    out.write(frame)
-                success, frame = cap.read()
-                pbar.update(1)
+            while cap.isOpened():
+                frames = []
+                frame_ids = []
+                timestamps = []
+                for i in range(self.batch_size):
+                    success, frame = cap.read()
+                    if not success:
+                        break
+                    timestamps.append(cap.get(cv2.CAP_PROP_POS_MSEC))
+                    frame_ids.append(int(cap.get(cv2.CAP_PROP_POS_FRAMES)))
+                    frames.append(frame)
+                if not success:
+                    break
+                if len(frames) != 0:
+                    frames = self.process_batch(frames, timestamps, frame_ids, save)
+                    if save:
+                        for frame in frames:
+                            out.write(frame)
+                pbar.update(len(frames))
         end = time.time() - start
         print(f'Time: {end}')
         self.pos_est_data = pd.DataFrame(self.pos_est_values, columns=['Frame_id', 'Time', 'People_count', 'KeyPoints'])
