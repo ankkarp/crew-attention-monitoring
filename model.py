@@ -1,6 +1,7 @@
 import time
 
 import cv2
+import numpy as np
 import pandas as pd
 import torch
 from tqdm import tqdm
@@ -33,12 +34,13 @@ def save_handled_frame(frame_id, saved_video_path, img_save_path):
 
 
 class AttentionModel:
-    def __init__(self, batch_size=4):
+    def __init__(self, batch_size=4, grayscale_adapted=False):
         self.detected_history = []
         self.pos_est_values = []
         self.detected_values = []
         self.sec_per_frame = None
         self.batch_size = batch_size
+        self.grayscale_adapted = grayscale_adapted
 
         # models
         self.detect_model = None,
@@ -96,7 +98,10 @@ class AttentionModel:
             pos_est_results = self.pos_est_model(frames, verbose=False)
             frames = self.handle_pos_est(pos_est_results, frames, timestamps, frame_ids, save)
         if self.detect_model is not None:
-            detection_results = self.detect_model(frames, verbose=False, conf=0.8)
+            conf = 0.8
+            if self.grayscale_adapted and np.array(frames).std(axis=-1).mean() < 2:
+                conf = 0.4
+            detection_results = self.detect_model(frames, verbose=False, conf=conf)
             frames = self.handle_detection(detection_results, frames, timestamps, frame_ids, save)
         return frames
 
