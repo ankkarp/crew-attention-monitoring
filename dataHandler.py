@@ -1,3 +1,7 @@
+pos_est_data = model.pos_est_data.drop_duplicates(subset=['Frame_id'])
+detection_data = model.detected_data.set_index('Frame_id')
+pos_est_data = pos_est_data.set_index('Frame_id')
+
 history = []
 
 max_allowed_dist = 1080 / 2
