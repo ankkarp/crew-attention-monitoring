@@ -3,7 +3,7 @@ import gradio as gr
 from model import *
 from analysis import *
 import argparse
-# import moviepy.editor as moviepy
+from utils import *
 
 parser = argparse.ArgumentParser()
 
@@ -16,26 +16,24 @@ args = parser.parse_args()
 
 inputs = [
     gr.Video(type='filepath', label='Input Video'),
-
-
-    # gr.Textbox(lines=2, placeholder="0", label='Введите номер нарушения')
+    gr.Textbox(lines=1, placeholder="0:00", label='Введите время нарушения')
 ]
 
 outputs = [
+    gr.Gallery(label="Фиксация нарушения", columns=(1, 3)),
     gr.Dataframe(
         label="Результат обработки видео",
-        # value=df,
         max_rows=10,
         col=2,
     ),
-    gr.Gallery(label="Фиксация нарушения", columns=(1, 3)),
-    # gr.CheckboxGroup([str(i) for i in range(df.shape[0])], label="Проверка", info="Было ли нарушение?")
 ]
 
 
-def logic(video_path, input_value):
+def logic(video_path, image_time):
     pd_ans = None
     image = None
+
+    print(image_time)
 
     if video_path:
         model = AttentionModel()
@@ -47,7 +45,11 @@ def logic(video_path, input_value):
         ans = analyzer.process_violations(violations)
 
         pd_ans = pd.DataFrame(ans, columns=['Start_time', 'End_time'])
-    return pd_ans, image
+
+    if image_time and video_path:
+        image = save_handled_timestamp(image_time, video_path, 'temp')
+
+    return image, pd_ans
 
 
 demo = gr.Interface(
