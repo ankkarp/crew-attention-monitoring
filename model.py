@@ -72,7 +72,7 @@ class AttentionModel:
 
     def handle_detection(self, results, frame, frame_id, save=False):
         detected_classes = []
-        detected_positions = dict()
+        detected_positions = []
 
         for result in results:
             boxes = result.boxes.cpu().numpy()
@@ -86,10 +86,7 @@ class AttentionModel:
                     confidence = str(round(box.conf[0].item(), 2))
                     label = f'{class_name}: {confidence}'
                     frame = plot_boxes(frame, xyxy, label)
-
-                if not class_name in detected_positions.keys():
-                    detected_positions[class_name] = []
-                detected_positions[class_name].append(xyxy)
+                detected_positions.append(xyxy.tolist())
 
         detected_classes = set(detected_classes)
 
