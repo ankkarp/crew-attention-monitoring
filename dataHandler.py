@@ -73,3 +73,28 @@ for frame_id in pos_est_data.index:
                         shoulders[0][0] < wrists[0][0] < shoulders[1][0] or shoulders[0][0] < wrists[1][0] < shoulders[1][0]
                     ):  # center of phone and one of the wrist between shoulders
                         violations.append([frame_id, time, [shoulders, wrists], history[i], j, 0])
+
+
+violations_processed = []
+passed_time = 0
+start_time = -1
+
+count = 0
+for i in range(0, len(violations)-1):
+    # print(violations[i+1][1], violations[i][1])
+    time_diff = violations[i+1][1] - violations[i][1]
+    if violations[i+1][4] == violations[i][4] and time_diff <= 1000:
+        if start_time == -1:
+            start_time = violations[i][1]
+
+        passed_time += time_diff
+        if passed_time > 3000:
+            print(passed_time)
+
+    else:
+        if passed_time > 3000:
+            # может прерываться видимость, сделать проверку
+            violations_processed.append([violations[i][4], start_time / 1000, (start_time + passed_time) / 1000, violations[i][5]])
+
+        passed_time = 0
+        start_time = -1
