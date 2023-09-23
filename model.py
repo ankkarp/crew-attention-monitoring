@@ -59,7 +59,6 @@ class AttentionModel:
             self.pos_est_model = YOLO(pose_estimator_name)
             self.pos_est_model.to('cuda')
 
-
     def handle_detection(self, results, frames, timestamps, frame_ids, save=False):
         for i in range(len(results)):
             detected_classes = []
@@ -97,7 +96,7 @@ class AttentionModel:
             pos_est_results = self.pos_est_model(frames, verbose=False)
             frames = self.handle_pos_est(pos_est_results, frames, timestamps, frame_ids, save)
         if self.detect_model is not None:
-            detection_results = self.detect_model(frames, verbose=False)
+            detection_results = self.detect_model(frames, verbose=False, conf=0.8)
             frames = self.handle_detection(detection_results, frames, timestamps, frame_ids, save)
         return frames
 
@@ -118,7 +117,7 @@ class AttentionModel:
         frame_height = int(cap.get(4))
 
         codec = cv2.VideoWriter_fourcc('M','J','P','G')  # avi format
-        out = cv2.VideoWriter(out_path, codec, fps * 2, (frame_width, frame_height))
+        out = cv2.VideoWriter(out_path, codec, fps, (frame_width, frame_height))
 
         start = time.time()
         with tqdm(total=frame_count) as pbar:
