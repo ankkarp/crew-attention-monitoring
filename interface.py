@@ -26,6 +26,7 @@ def logic(video, text):
         violations = analyzer.process_model_data(model.pos_est_model, model.detected_data)
         ans = analyzer.process_violations(violations)
 
+        pd_ans = pd.DataFrame(columns=['Start_time', 'End_time'])
 
 
 

@@ -37,8 +37,8 @@ class Analyzer:
                                 violations.append([frame_id, time])
         return violations
 
-    def _update_violations(self, violations_processed, passed_time, violation, start_time):
-        if passed_time > 3000:  # min_wrist_dist
+    def _update_violations(self, violations_processed, passed_time, start_time):
+        if passed_time > 3000:
             total_sec = start_time / 1000
             min = int(total_sec // 60)
             sec = int(total_sec % 60)
@@ -47,7 +47,7 @@ class Analyzer:
             p_min = int(total_p_sec // 60)
             p_sec = int(total_p_sec % 60)
 
-            violations_processed.append(f'start: {min}:{sec:02}, end: {p_min}:{p_sec:02}')
+            violations_processed.append([f'{min}:{sec:02}', f'{p_min}:{p_sec:02}'])
         return violations_processed
 
     def process_violations(self, violations):
