@@ -64,11 +64,9 @@ class Analyzer:
                 passed_time += time_diff
 
                 if i == len(violations) - 2:
-                    violations_processed = self._update_violations(violations_processed, passed_time,
-                                                                   violations[i], start_time)
+                    violations_processed = self._update_violations(violations_processed, passed_time, start_time)
             else:
-                violations_processed = self._update_violations(violations_processed, passed_time,
-                                                               violations[i], start_time)
+                violations_processed = self._update_violations(violations_processed, passed_time, start_time)
 
                 passed_time = 0
                 start_time = -1
