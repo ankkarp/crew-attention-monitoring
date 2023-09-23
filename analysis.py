@@ -38,7 +38,7 @@ class Analyzer:
         return violations
 
     def _update_violations(self, violations_processed, passed_time, violation, start_time):
-        if passed_time > 3000 and violation[2]:  # min_wrist_dist
+        if passed_time > 3000:  # min_wrist_dist
             total_sec = start_time / 1000
             min = int(total_sec // 60)
             sec = int(total_sec % 60)
