@@ -1,19 +1,13 @@
-pos_est_data = model.pos_est_data.drop_duplicates(subset=['Frame_id'])
-detection_data = model.detected_data.set_index('Frame_id')
-pos_est_data = pos_est_data.set_index('Frame_id')
-
-
 history = []
+
 max_allowed_dist = 1080 / 2
 wrist_phone_dist = 90
+
 violations = []
 
-
-def get_center(bbox):
-    return np.array([(bbox[0] + bbox[2]) / 2, (bbox[1] + bbox[3]) / 2])
-
-
 for frame_id in pos_est_data.index:
+    print(frame_id, len(violations), len(history))
+
     persons_wrists = [pose[9:11] for pose in pos_est_data.loc[frame_id, 'KeyPoints']]
     persons_shoulders = [pose[5:7] for pose in pos_est_data.loc[frame_id, 'KeyPoints']]
     time = pos_est_data.loc[frame_id, 'Time']
@@ -33,26 +27,27 @@ for frame_id in pos_est_data.index:
                     history[i] = phones[closest_id]
                     visibility[i] = 1  # we can see phone on frame
                     phones.pop(closest_id)
+
             if phones:
                 history.extend(phones)
                 visibility.extend([1 for i in range(len(phones))])  # we can see all extended phones
 
         else:
+            unhandled = []
             for j in range(len(phones)):
-                center = get_center(history[j])
+                center = get_center(phones[j])
                 dists = list(map(lambda x: np.linalg.norm(get_center(x) - center), history))
                 min_dist = min(dists)
 
-                if not min_dist > max_allowed_dist:
+                if min_dist < max_allowed_dist:
                     closest_id = dists.index(min_dist)
-                    history[j] = phones[closest_id]
-                    visibility[j] = 1  # we can see phone on frame
-                    phones.pop(closest_id)
-            if phones:
-                history.extend(phones)
-                visibility.extend([1 for i in range(len(phones))])  # we can see all extended phones
-
-        #print(history, frame_id)
+                    history[closest_id] = phones[j]
+                    visibility[closest_id] = 1
+                else:
+                    unhandled.append(phones[j])
+            if unhandled:
+                history.extend(unhandled)
+                visibility.extend([1 for i in range(len(unhandled))])  # we can see all extended phones
 
     # if we have info about phones pos
     if history:
@@ -68,7 +63,7 @@ for frame_id in pos_est_data.index:
 
         # hidden phone between shoulders
         for i in range(len(history)):
-            if visibility[i] == 0:  # for each invisible phone
+            if visibility[i] == 0: # for each invisible phone
                 center = get_center(history[i])
 
                 for j in range(len(persons_shoulders)): # for each person
@@ -78,26 +73,3 @@ for frame_id in pos_est_data.index:
                         shoulders[0][0] < wrists[0][0] < shoulders[1][0] or shoulders[0][0] < wrists[1][0] < shoulders[1][0]
                     ):  # center of phone and one of the wrist between shoulders
                         violations.append([frame_id, time, [shoulders, wrists], history[i], j, 0])
-
-
-violations_processed = []
-passed_time = 0
-start_time = -1
-
-count = 0
-for i in range(0, len(violations) - 1):
-    time_diff = violations[i + 1][1] - violations[i][1]
-    print(time_diff)
-    if violations[i + 1][4] == violations[i][4] and time_diff <= 1:
-        if start_time == -1:
-            start_time = violations[i][1]
-        passed_time += time_diff
-
-    else:
-        print(passed_time, 'passed_time')
-        if passed_time > 1:
-            # может прерываться видимость, сделать проверку
-            violations_processed.append([violations[i][4], start_time, violations[i][1], violations[i][5]])
-
-        passed_time = 0
-        start_time = -1
