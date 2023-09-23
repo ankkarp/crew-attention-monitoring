@@ -64,28 +64,11 @@ class Analyzer:
                 passed_time += time_diff
 
                 if i == len(violations) - 2:
-
-                    if passed_time > 3000:
-                        total_sec = start_time / 1000
-                        min = int(total_sec // 60)
-                        sec = int(total_sec % 60)
-
-                        total_p_sec = (start_time + passed_time) / 1000
-                        p_min = int(total_p_sec // 60)
-                        p_sec = int(total_p_sec % 60)
-
-                        violations_processed.append(f'{min}:{sec}, end: {p_min}:{p_sec}')
+                    violations_processed = self._update_violations(violations_processed, passed_time,
+                                                                   violations[i], start_time)
             else:
-                if passed_time > 3000:
-                    total_sec = start_time / 1000
-                    min = int(total_sec // 60)
-                    sec = int(total_sec % 60)
-
-                    total_p_sec = (start_time + passed_time) / 1000
-                    p_min = int(total_p_sec // 60)
-                    p_sec = int(total_p_sec % 60)
-
-                    violations_processed.append(f'start: {min}:{sec}, end: {p_min}:{p_sec}')
+                violations_processed = self._update_violations(violations_processed, passed_time,
+                                                               violations[i], start_time)
 
                 passed_time = 0
                 start_time = -1
