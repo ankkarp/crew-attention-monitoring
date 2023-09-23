@@ -47,7 +47,7 @@ class Analyzer:
             p_min = int(total_p_sec // 60)
             p_sec = int(total_p_sec % 60)
 
-            violations_processed.append(f'start: {min}:{sec}, end: {p_min}:{p_sec}')
+            violations_processed.append(f'start: {min}:{sec:02}, end: {p_min}:{p_sec:02}')
         return violations_processed
 
     def process_violations(self, violations):
