@@ -25,13 +25,13 @@ class Analyzer:
                 for i in range(len(persons_wrists)):
 
                     for j in range(len(persons_wrists[i])):
-                        dists = list(map(lambda x: np.linalg.norm(get_center(x) - persons_wrists[i][j]), phones))
+                        dists = list(map(lambda x: np.linalg.norm(self._get_center(x) - persons_wrists[i][j]), phones))
                         min_dist = min(dists)
 
                         closest_id = dists.index(min_dist)
                         closest_phone = phones[closest_id]
 
-                        if min_dist <= max_wrist_dist:
+                        if min_dist <= self.max_wrist_dist:
                             if not ((j == 0 and persons_wrists[i][j][0] > closest_phone[2])
                                     or (j == 1 and persons_wrists[i][j][0] < closest_phone[0])):
                                 violations.append([frame_id, time])
