@@ -29,14 +29,16 @@ outputs = [
     ),
 ]
 
+pd_ans = pd.DataFrame(columns=['Start_time', 'End_time'])
+last_video = None
 
 def logic(video_path, image_time):
-    pd_ans = None
+    global last_video
+    global pd_ans
     image = None
-
     print(image_time)
-
-    if video_path and not image_time:
+    if video_path and last_video != video_path:
+        pd_ans = pd.DataFrame(columns=['Start_time', 'End_time'])
         model = AttentionModel()
         model.load_models(args.detection_model, args.pose_model)
         model.process_video(video_path, 'result/output_video.avi')
@@ -46,6 +48,7 @@ def logic(video_path, image_time):
         ans = analyzer.process_violations(violations)
 
         pd_ans = pd.DataFrame(ans, columns=['Start_time', 'End_time'])
+        last_video = video_path
 
     if image_time and video_path:
         time_ms = sum([int(el) * 60 ** i for i, el in enumerate(image_time.split(':')[::-1])]) * 1000
