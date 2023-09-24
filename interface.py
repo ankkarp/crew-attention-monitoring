@@ -15,7 +15,7 @@ args = parser.parse_args()
 
 
 inputs = [
-    gr.Video(label='Input Video'),
+    gr.Image(),
     gr.Textbox(lines=1, placeholder="0:00", label='Введите время нарушения')
 ]
 
