@@ -1,7 +1,7 @@
-import pandas as pd
 import gradio as gr
+
+from analysis import Analyzer
 from model import *
-from analysis import *
 import argparse
 from utils import *
 
@@ -15,12 +15,12 @@ args = parser.parse_args()
 
 
 inputs = [
-    gr.Image(),
+    gr.Video(label='Input Video'),
     gr.Textbox(lines=1, placeholder="0:00", label='Введите время нарушения')
 ]
 
 outputs = [
-    gr.Gallery(label="Фиксация нарушения"),
+    gr.Image(type='numpy'),
     gr.Dataframe(
         label="Результат обработки видео",
         row_count=10,
@@ -36,20 +36,21 @@ def logic(video_path, image_time):
 
     print(image_time)
 
-    if video_path:
+    if video_path and not image_time:
         model = AttentionModel()
         model.load_models(args.detection_model, args.pose_model)
-        model.process_video(video_path, 'temp/output_video.avi')
+        model.process_video(video_path, 'result/output_video.avi')
 
         analyzer = Analyzer()
-        violations = analyzer.process_model_data(model.pos_est_model, model.detected_data)
+        violations = analyzer.process_model_data(model.pos_est_data, model.detected_data)
         ans = analyzer.process_violations(violations)
 
         pd_ans = pd.DataFrame(ans, columns=['Start_time', 'End_time'])
 
     if image_time and video_path:
-        image = save_handled_timestamp(image_time, video_path, 'temp')
-
+        time_ms = sum([int(el) * 60 ** i for i, el in enumerate(image_time.split(':')[::-1])]) * 1000
+        image = save_handled_timestamp(time_ms, 'result/output_video.avi')
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     return image, pd_ans
 
 

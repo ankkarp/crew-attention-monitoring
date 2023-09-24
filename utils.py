@@ -27,12 +27,9 @@ def save_handled_frame(frame_id, saved_video_path, img_save_path):
     print('image was saved')
 
 
-def save_handled_timestamp(timestamp, saved_video_path, img_save_path):
+def save_handled_timestamp(timestamp, saved_video_path):
     cap = cv2.VideoCapture(saved_video_path)
     success, frame = cap.read()
-
     while cap.get(cv2.CAP_PROP_POS_MSEC) < timestamp:
         success, frame = cap.read()
-
-    cv2.imwrite(f'{img_save_path}/detection_frame_{timestamp}.jpg', frame)
     return frame
